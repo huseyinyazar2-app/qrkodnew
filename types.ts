@@ -8,7 +8,7 @@ export interface QRRecord {
   unsaved?: boolean;   // UI flag: true if generated but not yet saved to DB
 }
 
-export type ViewState = 'dashboard' | 'settings' | 'search';
+export type ViewState = 'dashboard' | 'settings' | 'search' | 'records';
 
 export interface User {
   username: string;

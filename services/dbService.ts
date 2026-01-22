@@ -111,6 +111,19 @@ export const dbService = {
     return { saved: uniqueRecords.length, skipped: skippedCount };
   },
 
+  updatePin: async (id: string, newPin: string): Promise<boolean> => {
+    const { error } = await supabase
+      .from('QR_Kod')
+      .update({ pin: newPin })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error updating PIN:', error);
+      return false;
+    }
+    return true;
+  },
+
   deleteRecord: async (id: string): Promise<void> => {
     const { error } = await supabase
       .from('QR_Kod')

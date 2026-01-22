@@ -10,12 +10,14 @@ import {
   Grid,
   Zap,
   CheckCircle,
-  ScanLine
+  ScanLine,
+  Database
 } from 'lucide-react';
 
 import { Login } from './components/Login';
 import { QRCard } from './components/QRCard';
 import { QRTable } from './components/QRTable';
+import { RecordsPage } from './components/RecordsPage'; // New Import
 import { dbService } from './services/dbService';
 import { QRRecord, ViewState } from './types';
 
@@ -140,18 +142,23 @@ function App() {
     const recordToDelete = records.find(r => r.id === id);
     if (!recordToDelete) return;
 
-    if (window.confirm('Bu QR kodunu silmek istediğinize emin misiniz?')) {
+    if (window.confirm('Bu QR kodunu silmek istediğinize emin misiniz?\nBu işlem geri alınamaz.')) {
       // If it's saved in DB, delete from DB
       if (!recordToDelete.unsaved) {
         await dbService.deleteRecord(id);
       }
-      // Always remove from UI state
+      // Always remove from UI state (Optimistic update for Dashboard)
       setRecords(records.filter(r => r.id !== id));
       
       // If we deleted the found record in search view, clear it
       if (view === 'search' && foundRecord?.id === id) {
         setFoundRecord(null);
         setHasSearched(false);
+      }
+      
+      // If we are on records page, re-fetch ensures consistency
+      if (view === 'records') {
+        loadData();
       }
     }
   };
@@ -184,7 +191,7 @@ function App() {
       <aside className="bg-slate-900 text-white w-full md:w-64 flex-shrink-0 flex flex-col">
         <div className="p-6 border-b border-slate-700">
           <h1 className="text-xl font-bold tracking-tight">QR Admin Pro</h1>
-          <p className="text-slate-400 text-xs mt-1">v1.5.0 Cloud Edition</p>
+          <p className="text-slate-400 text-xs mt-1">v1.6.0 Extended</p>
         </div>
         
         <nav className="flex-1 p-4 space-y-2">
@@ -195,7 +202,18 @@ function App() {
             }`}
           >
             <LayoutDashboard className="w-5 h-5" />
-            Panel
+            Panel (Üretim)
+          </button>
+
+          {/* New Menu Item */}
+          <button
+            onClick={() => setView('records')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              view === 'records' ? 'bg-brand-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+            }`}
+          >
+            <Database className="w-5 h-5" />
+            Tüm Kayıtlar
           </button>
           
           <button
@@ -241,9 +259,10 @@ function App() {
         {/* Header */}
         <header className="bg-white shadow-sm px-6 py-4 flex flex-col xl:flex-row justify-between items-center gap-4 sticky top-0 z-10">
           <h2 className="text-2xl font-bold text-gray-800 self-start xl:self-center">
-            {view === 'dashboard' && 'QR Yönetimi'}
+            {view === 'dashboard' && 'QR Üretim Paneli'}
+            {view === 'records' && 'Tüm Kayıt Listesi'}
             {view === 'settings' && 'Sistem Ayarları'}
-            {view === 'search' && 'Kod Sorgulama ve İndirme'}
+            {view === 'search' && 'Kod Sorgulama'}
           </h2>
           
           {view === 'dashboard' && (
@@ -306,6 +325,14 @@ function App() {
 
         {/* Content Body */}
         <div className="p-8">
+          
+          {view === 'records' && (
+            <RecordsPage 
+              records={records} 
+              onDelete={handleDelete} 
+              onRefresh={loadData}
+            />
+          )}
           
           {view === 'settings' && (
             <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-sm border border-gray-200 p-8">
