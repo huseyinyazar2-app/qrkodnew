@@ -17,7 +17,7 @@ import {
 import { Login } from './components/Login';
 import { QRCard } from './components/QRCard';
 import { QRTable } from './components/QRTable';
-import { RecordsPage } from './components/RecordsPage'; // New Import
+import { RecordsPage } from './components/RecordsPage';
 import { dbService } from './services/dbService';
 import { QRRecord, ViewState } from './types';
 
@@ -118,6 +118,8 @@ function App() {
       const result = await dbService.saveBatch(unsavedRecords);
       
       // Reload data from DB to ensure UI matches exactly what is stored.
+      // This will replace the 'records' state with only DB records (unsaved flag gone),
+      // effectively clearing the Dashboard view automatically.
       await loadData();
       
       // Reset count
@@ -173,9 +175,13 @@ function App() {
     setHasSearched(true);
   };
 
-  const filteredRecords = records.filter(r => 
-    r.shortCode.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    r.fullUrl.toLowerCase().includes(searchTerm.toLowerCase())
+  // Filter specific for Dashboard: Only show UNSAVED (Draft) records
+  // Saved records are shown in "Tüm Kayıtlar" page.
+  const dashboardRecords = records.filter(r => 
+    r.unsaved && (
+      r.shortCode.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      r.fullUrl.toLowerCase().includes(searchTerm.toLowerCase())
+    )
   );
 
   const unsavedCount = records.filter(r => r.unsaved).length;
@@ -205,7 +211,6 @@ function App() {
             Panel (Üretim)
           </button>
 
-          {/* New Menu Item */}
           <button
             onClick={() => setView('records')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
@@ -443,50 +448,50 @@ function App() {
           {view === 'dashboard' && (
             <div className="space-y-6">
               
-              {/* Toolbar: Search + View Toggles */}
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                {records.length > 0 && (
+              {/* Toolbar: Search + View Toggles (Only if there are new records) */}
+              {dashboardRecords.length > 0 && (
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                   <div className="relative max-w-md w-full sm:w-auto">
                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                      <input 
                         type="text" 
-                        placeholder="Listede filtrele..." 
+                        placeholder="Taslaklarda filtrele..." 
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-200 focus:border-brand-400 outline-none"
                      />
                   </div>
-                )}
-                
-                {/* View Switcher */}
-                <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
-                  <button
-                    onClick={() => setDisplayMode('grid')}
-                    className={`p-2 rounded transition ${displayMode === 'grid' ? 'bg-white shadow text-brand-600' : 'text-gray-500 hover:text-gray-700'}`}
-                    title="Kart Görünümü"
-                  >
-                    <Grid className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => setDisplayMode('list')}
-                    className={`p-2 rounded transition ${displayMode === 'list' ? 'bg-white shadow text-brand-600' : 'text-gray-500 hover:text-gray-700'}`}
-                    title="Liste Görünümü"
-                  >
-                    <List className="w-5 h-5" />
-                  </button>
+                  
+                  {/* View Switcher */}
+                  <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
+                    <button
+                      onClick={() => setDisplayMode('grid')}
+                      className={`p-2 rounded transition ${displayMode === 'grid' ? 'bg-white shadow text-brand-600' : 'text-gray-500 hover:text-gray-700'}`}
+                      title="Kart Görünümü"
+                    >
+                      <Grid className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => setDisplayMode('list')}
+                      className={`p-2 rounded transition ${displayMode === 'list' ? 'bg-white shadow text-brand-600' : 'text-gray-500 hover:text-gray-700'}`}
+                      title="Liste Görünümü"
+                    >
+                      <List className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Content Area */}
-              {records.length === 0 ? (
+              {dashboardRecords.length === 0 ? (
                 <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
                   <div className="mx-auto w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
                     <Zap className="w-8 h-8 text-gray-300" />
                   </div>
-                  <h3 className="text-lg font-medium text-gray-900">Henüz QR Kod Oluşturulmadı</h3>
+                  <h3 className="text-lg font-medium text-gray-900">Yeni Üretim Bekleniyor</h3>
                   <p className="text-gray-500 mt-1 max-w-sm mx-auto">
                     {baseUrl 
-                      ? "Yukarıdan adet girip 'Üret' butonuna basarak taslak oluşturun, ardından 'Kaydet'e basarak veritabanına işleyin."
+                      ? "Yukarıdan adet girip 'Üret' butonuna basarak yeni QR kodları oluşturun. Eski kayıtlar için 'Tüm Kayıtlar' menüsüne gidin."
                       : "Başlamak için Ayarlar menüsünden Kök URL adresini giriniz."
                     }
                   </p>
@@ -495,7 +500,7 @@ function App() {
                 <>
                   {displayMode === 'grid' ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                      {filteredRecords.map((record) => (
+                      {dashboardRecords.map((record) => (
                         <QRCard 
                           key={record.id} 
                           record={record} 
@@ -505,14 +510,14 @@ function App() {
                     </div>
                   ) : (
                     <QRTable 
-                      records={filteredRecords} 
+                      records={dashboardRecords} 
                       onDelete={handleDelete} 
                     />
                   )}
                   
-                  {filteredRecords.length === 0 && (
+                  {dashboardRecords.length === 0 && searchTerm && (
                     <div className="text-center text-gray-500 py-10 w-full bg-white rounded-lg">
-                      "{searchTerm}" için sonuç bulunamadı.
+                      "{searchTerm}" için taslak bulunamadı.
                     </div>
                   )}
                 </>
