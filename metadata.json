@@ -1,0 +1,5 @@
+{
+  "name": "QR Admin Pro",
+  "description": "Secure admin dashboard for generating, managing, and downloading distinct QR codes with associated access PINs.",
+  "requestFramePermissions": []
+}
