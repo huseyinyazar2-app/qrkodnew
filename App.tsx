@@ -202,7 +202,7 @@ function App() {
                     ctx.textAlign = 'center';
                     ctx.fillStyle = '#000';
                     ctx.font = 'bold 40px sans-serif';
-                    ctx.fillText("Find Me", sizePx/2, sizePx + 50);
+                    ctx.fillText("Beni Bul", sizePx/2, sizePx + 50);
                     ctx.font = 'bold 50px monospace';
                     ctx.fillText(record.shortCode, sizePx/2, sizePx + 100);
                     ctx.fillStyle = '#555';

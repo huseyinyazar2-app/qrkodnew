@@ -34,9 +34,9 @@ export const dbService = {
 
   // --- RECORDS ---
   getRecords: async (): Promise<QRRecord[]> => {
-    // Modified query to be safer. using explicit left join logic via select syntax if possible.
-    // Ensure we handle cases where Find_Users is missing.
-    const { data, error } = await supabase
+    // Attempt 1: Try to fetch with Owner Information (Join)
+    // Note: This relies on Supabase detecting the Foreign Key relationship correctly.
+    let { data, error } = await supabase
       .from('QR_Kod')
       .select(`
         *,
@@ -48,6 +48,19 @@ export const dbService = {
       `)
       .order('created_at', { ascending: false });
 
+    // Attempt 2 (Fallback): If the Join fails (e.g., relationship naming issue), 
+    // fetch just the QR codes so the admin can at least see the records.
+    if (error) {
+      console.warn('Relation fetch failed, switching to simple fetch.', error);
+      const fallback = await supabase
+        .from('QR_Kod')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      data = fallback.data;
+      error = fallback.error;
+    }
+
     if (error) {
       console.error('Error fetching records:', error);
       return [];
@@ -58,6 +71,7 @@ export const dbService = {
     return data.map((item: any) => {
       // Find_Users might be null, an array, or an object. Safe parsing.
       let user = null;
+      // Only try to parse user if the join succeeded
       if (item.Find_Users) {
         user = Array.isArray(item.Find_Users) ? item.Find_Users[0] : item.Find_Users;
       }
@@ -67,7 +81,8 @@ export const dbService = {
         shortCode: item.short_code,
         pin: item.pin,
         fullUrl: item.full_url,
-        status: item.status === 'boş' ? 'active' : 'passive',
+        // Normalize status check (handle case sensitivity just in case)
+        status: (item.status && item.status.toLowerCase() === 'dolu') ? 'passive' : 'active',
         createdAt: new Date(item.created_at).getTime(),
         ownerName: user?.full_name || '-',
         ownerEmail: user?.email || '-',

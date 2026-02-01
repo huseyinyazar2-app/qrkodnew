@@ -57,10 +57,10 @@ export const QRCard: React.FC<QRCardProps> = ({ record, onDelete }) => {
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#000000';
 
-    // 1. "Find Me" Label
+    // 1. "Beni Bul" Label
     const fontSize1 = Math.round(pixels * 0.1); 
     ctx.font = `bold ${fontSize1}px sans-serif`;
-    ctx.fillText("Find Me", canvas.width / 2, pixels + (extraHeight * 0.25));
+    ctx.fillText("Beni Bul", canvas.width / 2, pixels + (extraHeight * 0.25));
 
     // 2. Short Code
     const fontSize2 = Math.round(pixels * 0.15);
@@ -130,7 +130,7 @@ export const QRCard: React.FC<QRCardProps> = ({ record, onDelete }) => {
         
         {/* Visual Display on Card */}
         <div className="mt-3 flex flex-col items-center gap-0">
-          <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Find Me</span>
+          <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Beni Bul</span>
           <span className="font-mono text-xl font-bold text-gray-800 tracking-wider">
             {record.shortCode}
           </span>
