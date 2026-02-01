@@ -16,32 +16,39 @@ export interface QRRecord {
 
 export interface LostPetRecord {
   id: string;
+  shortCode: string;
+  
+  // Pet Basic Info (from pet_data JSON)
   petName: string;
   petType: string;
   photoUrl: string;
+  features: string;       // Renk/Özellik
+  
+  // Pet Specific Details (from pet_data JSON structure)
+  sizeInfo?: string;      // Boy/Kilo
+  temperament?: string;   // Huy (Uysal, Hırçın vb.)
+  healthWarning?: string; // Sağlık Uyarısı
+  vetInfo?: string;       // Veteriner Bilgisi
+  microchipId?: string;   // Çip No (Hidden in JSON usually but admin sees it)
+
+  // Lost Status (from lost_status JSON)
   lostDate: string;
   lostMessage: string;
+  reward?: string;        // Para Ödülü (If available)
+  location?: { lat: number; lng: number };
+
+  // Primary Contact (from Find_Users columns)
   ownerName: string;
   ownerPhone: string;
   ownerEmail: string;
-  shortCode: string;
-  
-  // Expanded Details
-  breed?: string;       // Cins
-  gender?: string;      // Cinsiyet
-  age?: string;         // Yaş
-  color?: string;       // Renk
-  microchipId?: string; // Çip No
-  reward?: string;      // Para Ödülü
-  
-  // Secondary Contact
-  secondaryContactName?: string;
-  secondaryContactPhone?: string;
-
-  features?: string;
   city?: string;
   district?: string;
-  location?: { lat: number; lng: number };
+  contactPreference?: string;
+
+  // Secondary/Emergency Contact (from Find_Users columns)
+  secondaryContactName?: string;
+  secondaryContactPhone?: string;
+  secondaryContactEmail?: string;
 }
 
 export type ViewState = 'dashboard' | 'settings' | 'search' | 'records' | 'lost-pets';

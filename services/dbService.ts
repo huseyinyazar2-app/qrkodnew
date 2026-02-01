@@ -35,7 +35,6 @@ export const dbService = {
   // --- RECORDS ---
   getRecords: async (): Promise<QRRecord[]> => {
     // Attempt 1: Try to fetch with Owner Information (Join)
-    // Note: This relies on Supabase detecting the Foreign Key relationship correctly.
     let { data, error } = await supabase
       .from('QR_Kod')
       .select(`
@@ -48,8 +47,7 @@ export const dbService = {
       `)
       .order('created_at', { ascending: false });
 
-    // Attempt 2 (Fallback): If the Join fails (e.g., relationship naming issue), 
-    // fetch just the QR codes so the admin can at least see the records.
+    // Attempt 2 (Fallback): If the Join fails
     if (error) {
       console.warn('Relation fetch failed, switching to simple fetch.', error);
       const fallback = await supabase
@@ -69,9 +67,7 @@ export const dbService = {
     if (!data) return [];
 
     return data.map((item: any) => {
-      // Find_Users might be null, an array, or an object. Safe parsing.
       let user = null;
-      // Only try to parse user if the join succeeded
       if (item.Find_Users) {
         user = Array.isArray(item.Find_Users) ? item.Find_Users[0] : item.Find_Users;
       }
@@ -81,7 +77,6 @@ export const dbService = {
         shortCode: item.short_code,
         pin: item.pin,
         fullUrl: item.full_url,
-        // Normalize status check (handle case sensitivity just in case)
         status: (item.status && item.status.toLowerCase() === 'dolu') ? 'passive' : 'active',
         createdAt: new Date(item.created_at).getTime(),
         ownerName: user?.full_name || '-',
@@ -94,6 +89,7 @@ export const dbService = {
   // --- LOST PETS ---
   getLostPets: async (): Promise<LostPetRecord[]> => {
     // Fetch pets where lost_status -> isActive is true
+    // Also fetch Emergency Contact info from Find_Users
     const { data, error } = await supabase
       .from('Find_Pets')
       .select(`
@@ -106,7 +102,11 @@ export const dbService = {
           email,
           qr_code,
           city,
-          district
+          district,
+          contact_preference,
+          emergency_contact_name,
+          emergency_contact_phone,
+          emergency_contact_email
         )
       `)
       .contains('lost_status', { isActive: true });
@@ -121,42 +121,44 @@ export const dbService = {
       const petData = item.pet_data || {};
       const lostStatus = item.lost_status || {};
       
-      // Helper to safely extract value from typical JSON structures or direct values
-      const getVal = (field: any) => (typeof field === 'object' && field?.value ? field.value : field);
+      // Helper to safely extract value from schema structure: { "value": "...", "isPublic": true }
+      const getVal = (field: any) => (typeof field === 'object' && field?.value !== undefined ? field.value : field);
 
       return {
         id: item.id,
         shortCode: user?.qr_code || '-',
         
-        // Basic Info
+        // Basic Info from pet_data
         petName: getVal(petData.name) || 'Bilinmiyor',
         petType: getVal(petData.type) || 'Bilinmiyor',
         photoUrl: getVal(petData.photoUrl) || '',
+        features: getVal(petData.features) || '', // Renk/Özellik
         
-        // Detailed Info
-        breed: getVal(petData.breed),
-        gender: getVal(petData.gender),
-        age: getVal(petData.age),
-        color: getVal(petData.color),
-        microchipId: getVal(petData.microchipId),
-        features: getVal(petData.features) || '',
+        // Detailed Info from pet_data (Schema Specific)
+        sizeInfo: getVal(petData.sizeInfo),       // Boy/Kilo
+        temperament: getVal(petData.temperament), // Huy
+        healthWarning: getVal(petData.healthWarning), // Sağlık Uyarısı
+        vetInfo: getVal(petData.vetInfo),         // Veteriner
+        microchipId: getVal(petData.microchip),   // Çip (Note: key is usually 'microchip' in schema)
         
         // Lost Status
         lostDate: lostStatus.lostDate || '',
         lostMessage: lostStatus.message || '',
-        reward: lostStatus.reward || '',
+        reward: lostStatus.reward || '', // Optional if used in app
         location: lostStatus.lastSeenLocation || null,
         
-        // Contact (Primary)
+        // Primary Contact (Find_Users)
         ownerName: user?.full_name || 'Gizli',
         ownerPhone: user?.phone || 'Gizli',
         ownerEmail: user?.email || '',
         city: user?.city || '',
         district: user?.district || '',
+        contactPreference: user?.contact_preference || '',
 
-        // Contact (Secondary - if available in lost_status)
-        secondaryContactName: lostStatus.secondaryContactName || lostStatus.contactPerson2 || '',
-        secondaryContactPhone: lostStatus.secondaryContactPhone || lostStatus.contactPhone2 || ''
+        // Secondary Contact (Find_Users -> emergency_contact_...)
+        secondaryContactName: user?.emergency_contact_name || '',
+        secondaryContactPhone: user?.emergency_contact_phone || '',
+        secondaryContactEmail: user?.emergency_contact_email || ''
       };
     });
   },
@@ -184,7 +186,6 @@ export const dbService = {
   saveBatch: async (recordsToSave: QRRecord[]): Promise<{ saved: number; skipped: number }> => {
     if (recordsToSave.length === 0) return { saved: 0, skipped: 0 };
 
-    // Check duplicates
     const codesToCheck = recordsToSave.map(r => r.shortCode);
     const { data: existingData, error: checkError } = await supabase
       .from('QR_Kod')
@@ -201,7 +202,6 @@ export const dbService = {
       return { saved: 0, skipped: skippedCount };
     }
 
-    // Insert
     const insertPayload = uniqueRecords.map(r => ({
       short_code: r.shortCode,
       pin: r.pin,
@@ -240,7 +240,6 @@ export const dbService = {
     if (error) console.error('Error deleting record:', error);
   },
 
-  // --- SETTINGS (Moved to Supabase) ---
   getBaseUrl: async (): Promise<string> => {
     const { data, error } = await supabase
       .from('QR_Settings')
@@ -253,7 +252,6 @@ export const dbService = {
   },
 
   saveBaseUrl: async (url: string): Promise<void> => {
-    // Upsert: Insert or Update if key exists
     const { error } = await supabase
       .from('QR_Settings')
       .upsert({ key: 'base_url', value: url });

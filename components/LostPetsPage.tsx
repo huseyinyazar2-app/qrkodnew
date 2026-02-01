@@ -14,7 +14,10 @@ import {
   Info,
   User,
   Users,
-  Hash
+  Hash,
+  Stethoscope,
+  Heart,
+  Scale
 } from 'lucide-react';
 
 export const LostPetsPage: React.FC = () => {
@@ -196,14 +199,24 @@ export const LostPetsPage: React.FC = () => {
                         <span className="font-bold text-gray-800">{selectedPet.petType}</span>
                      </div>
                      <div className="flex justify-between items-center border-b border-gray-200 pb-2">
-                        <span className="text-gray-500 text-sm">Cinsiyet</span>
-                        <span className="font-bold text-gray-800">{selectedPet.gender || '-'}</span>
+                        <span className="text-gray-500 text-sm flex items-center gap-1"><Scale className="w-3 h-3"/> Boy/Kilo</span>
+                        <span className="font-bold text-gray-800">{selectedPet.sizeInfo || '-'}</span>
                      </div>
                      <div className="flex justify-between items-center">
-                        <span className="text-gray-500 text-sm">Yaş</span>
-                        <span className="font-bold text-gray-800">{selectedPet.age || '-'}</span>
+                        <span className="text-gray-500 text-sm flex items-center gap-1"><Heart className="w-3 h-3"/> Huy</span>
+                        <span className="font-bold text-gray-800">{selectedPet.temperament || '-'}</span>
                      </div>
                    </div>
+                   
+                   {/* Health Warning if exists */}
+                   {selectedPet.healthWarning && selectedPet.healthWarning !== 'Yok' && (
+                     <div className="bg-amber-50 p-3 rounded-xl border border-amber-200">
+                        <label className="text-xs font-bold text-amber-700 uppercase flex items-center gap-1 mb-1">
+                          <Stethoscope className="w-3 h-3" /> Sağlık Uyarısı
+                        </label>
+                        <p className="text-sm text-amber-900">{selectedPet.healthWarning}</p>
+                     </div>
+                   )}
                  </div>
 
                  {/* RIGHT COLUMN: Detailed Info & Contact */}
@@ -213,9 +226,6 @@ export const LostPetsPage: React.FC = () => {
                    <div>
                      <div className="flex items-end gap-3 mb-4">
                        <h1 className="text-3xl font-extrabold text-gray-900 leading-none">{selectedPet.petName}</h1>
-                       {selectedPet.breed && (
-                         <span className="text-lg text-gray-500 font-medium pb-1">({selectedPet.breed})</span>
-                       )}
                      </div>
                      
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -224,7 +234,6 @@ export const LostPetsPage: React.FC = () => {
                             <Info className="w-3 h-3" /> Renk / Özellikler
                           </label>
                           <div className="text-gray-800 font-medium">
-                            {selectedPet.color ? `${selectedPet.color} - ` : ''}
                             {selectedPet.features || 'Belirtilmemiş'}
                           </div>
                         </div>
@@ -234,9 +243,20 @@ export const LostPetsPage: React.FC = () => {
                              <Hash className="w-3 h-3" /> Mikroçip No
                           </label>
                           <div className="text-gray-800 font-mono font-medium tracking-wide">
-                            {selectedPet.microchipId || 'Yok / Bilinmiyor'}
+                            {selectedPet.microchipId || 'Yok / Gizli'}
                           </div>
                         </div>
+                        
+                        {selectedPet.vetInfo && (
+                          <div className="bg-white p-3 rounded-lg border border-gray-200">
+                            <label className="text-xs font-bold text-gray-400 uppercase flex items-center gap-1 mb-1">
+                              <Stethoscope className="w-3 h-3" /> Veteriner Bilgisi
+                            </label>
+                            <div className="text-gray-800 font-medium">
+                              {selectedPet.vetInfo}
+                            </div>
+                          </div>
+                        )}
 
                         <div className="bg-white p-3 rounded-lg border border-gray-200">
                           <label className="text-xs font-bold text-gray-400 uppercase flex items-center gap-1 mb-1">
@@ -247,7 +267,7 @@ export const LostPetsPage: React.FC = () => {
                           </div>
                         </div>
 
-                        <div className="bg-white p-3 rounded-lg border border-gray-200">
+                        <div className="bg-white p-3 rounded-lg border border-gray-200 md:col-span-2">
                           <label className="text-xs font-bold text-gray-400 uppercase flex items-center gap-1 mb-1">
                              <MapPin className="w-3 h-3" /> Kaybolduğu Konum
                           </label>
@@ -287,10 +307,15 @@ export const LostPetsPage: React.FC = () => {
                                <span className="text-sm truncate">{selectedPet.ownerEmail}</span>
                              </div>
                            )}
+                           {selectedPet.contactPreference && (
+                             <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-brand-200">
+                               Tercih: {selectedPet.contactPreference}
+                             </div>
+                           )}
                          </div>
                        </div>
 
-                       {/* Secondary Contact */}
+                       {/* Secondary Contact (Emergency Contact) */}
                        {(selectedPet.secondaryContactName || selectedPet.secondaryContactPhone) ? (
                          <div className="bg-orange-50 rounded-xl p-4 border border-orange-100">
                            <div className="flex items-center gap-3 mb-3">
@@ -303,16 +328,24 @@ export const LostPetsPage: React.FC = () => {
                              </div>
                            </div>
                            <div className="space-y-2 pl-2">
-                             <div className="flex items-center gap-2 text-gray-700">
-                               <Phone className="w-4 h-4 text-orange-500" />
-                               <span className="font-mono font-medium">{selectedPet.secondaryContactPhone || '-'}</span>
-                             </div>
+                             {selectedPet.secondaryContactPhone && (
+                               <div className="flex items-center gap-2 text-gray-700">
+                                 <Phone className="w-4 h-4 text-orange-500" />
+                                 <span className="font-mono font-medium">{selectedPet.secondaryContactPhone}</span>
+                               </div>
+                             )}
+                             {selectedPet.secondaryContactEmail && (
+                               <div className="flex items-center gap-2 text-gray-700">
+                                 <Mail className="w-4 h-4 text-orange-500" />
+                                 <span className="text-sm truncate">{selectedPet.secondaryContactEmail}</span>
+                               </div>
+                             )}
                            </div>
                          </div>
                        ) : (
                          <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 flex flex-col items-center justify-center text-gray-400">
                            <Users className="w-8 h-8 mb-2 opacity-50" />
-                           <span className="text-sm font-medium">2. Kişi Bilgisi Yok</span>
+                           <span className="text-sm font-medium">Yedek Kişi Bilgisi Yok</span>
                          </div>
                        )}
                      </div>
