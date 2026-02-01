@@ -25,7 +25,19 @@ export interface LostPetRecord {
   ownerPhone: string;
   ownerEmail: string;
   shortCode: string;
-  // Extra details for modal
+  
+  // Expanded Details
+  breed?: string;       // Cins
+  gender?: string;      // Cinsiyet
+  age?: string;         // Yaş
+  color?: string;       // Renk
+  microchipId?: string; // Çip No
+  reward?: string;      // Para Ödülü
+  
+  // Secondary Contact
+  secondaryContactName?: string;
+  secondaryContactPhone?: string;
+
   features?: string;
   city?: string;
   district?: string;

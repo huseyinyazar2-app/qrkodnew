@@ -1,7 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { dbService } from '../services/dbService';
 import { LostPetRecord } from '../types';
-import { AlertCircle, Phone, Calendar, Search, MapPin, X, Eye } from 'lucide-react';
+import { 
+  AlertCircle, 
+  Phone, 
+  Search, 
+  X, 
+  Eye, 
+  MapPin, 
+  Mail, 
+  Calendar, 
+  Award,
+  Info,
+  User,
+  Users,
+  Hash
+} from 'lucide-react';
 
 export const LostPetsPage: React.FC = () => {
   const [lostPets, setLostPets] = useState<LostPetRecord[]>([]);
@@ -120,16 +134,25 @@ export const LostPetsPage: React.FC = () => {
         </div>
        </div>
 
-       {/* Modal for Details */}
+       {/* Enhanced Modal for Details */}
        {selectedPet && (
-         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative flex flex-col">
+         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
+           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl my-8 relative flex flex-col max-h-[90vh]">
              
              {/* Header */}
-             <div className="p-6 border-b border-gray-100 flex justify-between items-start sticky top-0 bg-white z-10">
+             <div className="p-6 border-b border-gray-100 flex justify-between items-start sticky top-0 bg-white z-20 rounded-t-2xl">
                <div>
-                 <h2 className="text-2xl font-bold text-gray-900">Kayıp İlanı Detayı</h2>
-                 <p className="text-sm text-gray-500 font-mono mt-1">ID: {selectedPet.shortCode}</p>
+                 <div className="flex items-center gap-2 mb-1">
+                   <h2 className="text-2xl font-bold text-gray-900">Kayıp İlanı Detayı</h2>
+                   {selectedPet.reward && (
+                     <span className="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-full font-bold flex items-center gap-1 border border-amber-200">
+                       <Award className="w-3 h-3" /> ÖDÜLLÜ: {selectedPet.reward}
+                     </span>
+                   )}
+                 </div>
+                 <p className="text-sm text-gray-500 font-mono flex items-center gap-2">
+                   <Hash className="w-3 h-3" /> Kod ID: {selectedPet.shortCode}
+                 </p>
                </div>
                <button 
                  onClick={() => setSelectedPet(null)}
@@ -139,87 +162,162 @@ export const LostPetsPage: React.FC = () => {
                </button>
              </div>
 
-             {/* Content */}
-             <div className="p-6 space-y-6">
+             {/* Content Scrollable Area */}
+             <div className="p-6 overflow-y-auto custom-scrollbar">
                
-               {/* Alert Box */}
-               <div className="bg-red-50 border border-red-200 p-4 rounded-xl">
+               {/* 1. Alert Message Section */}
+               <div className="bg-red-50 border border-red-200 p-5 rounded-xl mb-6 shadow-sm">
                  <h4 className="font-bold text-red-800 text-sm uppercase tracking-wide mb-2 flex items-center gap-2">
-                   <AlertCircle className="w-4 h-4" /> Sahibinin Mesajı
+                   <AlertCircle className="w-4 h-4" /> Sahibinin Kayıp Mesajı
                  </h4>
-                 <p className="text-red-900 italic">
+                 <p className="text-red-900 text-lg italic leading-relaxed">
                    "{selectedPet.lostMessage}"
                  </p>
                </div>
 
-               <div className="flex flex-col md:flex-row gap-6">
-                 {/* Left: Photo */}
-                 <div className="w-full md:w-1/3">
-                   <div className="aspect-square bg-gray-100 rounded-xl overflow-hidden border border-gray-200 shadow-inner">
+               <div className="flex flex-col lg:flex-row gap-8">
+                 
+                 {/* LEFT COLUMN: Photo & Key Stats */}
+                 <div className="w-full lg:w-1/3 flex-shrink-0 space-y-4">
+                   <div className="aspect-square bg-gray-100 rounded-2xl overflow-hidden border border-gray-200 shadow-inner relative">
                      {selectedPet.photoUrl ? (
                        <img src={selectedPet.photoUrl} alt={selectedPet.petName} className="w-full h-full object-cover" />
                      ) : (
-                       <div className="w-full h-full flex items-center justify-center text-gray-400">Fotoğraf Yok</div>
+                       <div className="w-full h-full flex items-center justify-center text-gray-400 flex-col gap-2">
+                         <Search className="w-8 h-8 opacity-20" />
+                         <span>Fotoğraf Yok</span>
+                       </div>
                      )}
                    </div>
-                   <div className="mt-4 text-center">
-                     <span className="inline-block bg-gray-100 px-3 py-1 rounded-full text-sm font-semibold text-gray-700">
-                       {selectedPet.petType}
-                     </span>
+                   
+                   <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
+                     <div className="flex justify-between items-center border-b border-gray-200 pb-2">
+                        <span className="text-gray-500 text-sm">Tür</span>
+                        <span className="font-bold text-gray-800">{selectedPet.petType}</span>
+                     </div>
+                     <div className="flex justify-between items-center border-b border-gray-200 pb-2">
+                        <span className="text-gray-500 text-sm">Cinsiyet</span>
+                        <span className="font-bold text-gray-800">{selectedPet.gender || '-'}</span>
+                     </div>
+                     <div className="flex justify-between items-center">
+                        <span className="text-gray-500 text-sm">Yaş</span>
+                        <span className="font-bold text-gray-800">{selectedPet.age || '-'}</span>
+                     </div>
                    </div>
                  </div>
 
-                 {/* Right: Info */}
-                 <div className="flex-1 space-y-4">
+                 {/* RIGHT COLUMN: Detailed Info & Contact */}
+                 <div className="flex-1 space-y-6">
+                   
+                   {/* Pet Identity */}
                    <div>
-                     <label className="text-xs font-bold text-gray-400 uppercase">Hayvan Adı</label>
-                     <div className="text-xl font-bold text-gray-900">{selectedPet.petName}</div>
-                   </div>
-
-                   {selectedPet.features && (
-                    <div>
-                      <label className="text-xs font-bold text-gray-400 uppercase">Özellikler / Renk</label>
-                      <div className="text-gray-700">{selectedPet.features}</div>
-                    </div>
-                   )}
-
-                   <div className="grid grid-cols-2 gap-4">
-                     <div>
-                       <label className="text-xs font-bold text-gray-400 uppercase">Kayıp Tarihi</label>
-                       <div className="text-gray-900 font-medium">{new Date(selectedPet.lostDate).toLocaleDateString('tr-TR')}</div>
+                     <div className="flex items-end gap-3 mb-4">
+                       <h1 className="text-3xl font-extrabold text-gray-900 leading-none">{selectedPet.petName}</h1>
+                       {selectedPet.breed && (
+                         <span className="text-lg text-gray-500 font-medium pb-1">({selectedPet.breed})</span>
+                       )}
                      </div>
-                     <div>
-                       <label className="text-xs font-bold text-gray-400 uppercase">Şehir / İlçe</label>
-                       <div className="text-gray-900 font-medium">
-                         {selectedPet.city || '-'} / {selectedPet.district || '-'}
-                       </div>
-                     </div>
-                   </div>
+                     
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-white p-3 rounded-lg border border-gray-200">
+                          <label className="text-xs font-bold text-gray-400 uppercase flex items-center gap-1 mb-1">
+                            <Info className="w-3 h-3" /> Renk / Özellikler
+                          </label>
+                          <div className="text-gray-800 font-medium">
+                            {selectedPet.color ? `${selectedPet.color} - ` : ''}
+                            {selectedPet.features || 'Belirtilmemiş'}
+                          </div>
+                        </div>
 
-                   <div className="pt-4 border-t border-gray-100">
-                     <h4 className="font-bold text-gray-900 mb-3">İletişim Bilgileri</h4>
-                     <div className="space-y-2">
-                       <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
-                         <div className="w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center text-brand-600">
-                           <div className="font-bold">{selectedPet.ownerName.charAt(0)}</div>
-                         </div>
-                         <div>
-                           <div className="text-xs text-gray-500">Ad Soyad</div>
-                           <div className="font-medium text-gray-900">{selectedPet.ownerName}</div>
-                         </div>
-                       </div>
-                       
-                       <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg cursor-pointer hover:bg-green-50 transition">
-                         <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600">
-                           <Phone className="w-4 h-4" />
-                         </div>
-                         <div>
-                           <div className="text-xs text-gray-500">Telefon</div>
-                           <div className="font-medium text-gray-900">{selectedPet.ownerPhone}</div>
-                         </div>
-                       </div>
+                        <div className="bg-white p-3 rounded-lg border border-gray-200">
+                          <label className="text-xs font-bold text-gray-400 uppercase flex items-center gap-1 mb-1">
+                             <Hash className="w-3 h-3" /> Mikroçip No
+                          </label>
+                          <div className="text-gray-800 font-mono font-medium tracking-wide">
+                            {selectedPet.microchipId || 'Yok / Bilinmiyor'}
+                          </div>
+                        </div>
+
+                        <div className="bg-white p-3 rounded-lg border border-gray-200">
+                          <label className="text-xs font-bold text-gray-400 uppercase flex items-center gap-1 mb-1">
+                             <Calendar className="w-3 h-3" /> Kayıp Tarihi
+                          </label>
+                          <div className="text-red-600 font-bold">
+                            {new Date(selectedPet.lostDate).toLocaleDateString('tr-TR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                          </div>
+                        </div>
+
+                        <div className="bg-white p-3 rounded-lg border border-gray-200">
+                          <label className="text-xs font-bold text-gray-400 uppercase flex items-center gap-1 mb-1">
+                             <MapPin className="w-3 h-3" /> Kaybolduğu Konum
+                          </label>
+                          <div className="text-gray-800 font-medium">
+                            {selectedPet.city || '-'} / {selectedPet.district || '-'}
+                          </div>
+                        </div>
                      </div>
                    </div>
+
+                   {/* Contact Section */}
+                   <div className="border-t-2 border-dashed border-gray-200 pt-6">
+                     <h3 className="font-bold text-lg text-gray-900 mb-4 flex items-center gap-2">
+                       <Users className="w-5 h-5 text-brand-600" /> İletişim Bilgileri
+                     </h3>
+                     
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       {/* Primary Contact */}
+                       <div className="bg-brand-50 rounded-xl p-4 border border-brand-100">
+                         <div className="flex items-center gap-3 mb-3">
+                           <div className="w-10 h-10 bg-brand-200 text-brand-700 rounded-full flex items-center justify-center">
+                             <User className="w-5 h-5" />
+                           </div>
+                           <div>
+                             <div className="text-xs text-brand-600 font-bold uppercase">Sahibi (1. Kişi)</div>
+                             <div className="font-bold text-gray-900 text-lg">{selectedPet.ownerName}</div>
+                           </div>
+                         </div>
+                         <div className="space-y-2 pl-2">
+                           <div className="flex items-center gap-2 text-gray-700">
+                             <Phone className="w-4 h-4 text-brand-500" />
+                             <span className="font-mono font-medium">{selectedPet.ownerPhone}</span>
+                           </div>
+                           {selectedPet.ownerEmail && (
+                             <div className="flex items-center gap-2 text-gray-700">
+                               <Mail className="w-4 h-4 text-brand-500" />
+                               <span className="text-sm truncate">{selectedPet.ownerEmail}</span>
+                             </div>
+                           )}
+                         </div>
+                       </div>
+
+                       {/* Secondary Contact */}
+                       {(selectedPet.secondaryContactName || selectedPet.secondaryContactPhone) ? (
+                         <div className="bg-orange-50 rounded-xl p-4 border border-orange-100">
+                           <div className="flex items-center gap-3 mb-3">
+                             <div className="w-10 h-10 bg-orange-200 text-orange-700 rounded-full flex items-center justify-center">
+                               <User className="w-5 h-5" />
+                             </div>
+                             <div>
+                               <div className="text-xs text-orange-600 font-bold uppercase">Yedek İletişim (2. Kişi)</div>
+                               <div className="font-bold text-gray-900 text-lg">{selectedPet.secondaryContactName || 'Belirtilmemiş'}</div>
+                             </div>
+                           </div>
+                           <div className="space-y-2 pl-2">
+                             <div className="flex items-center gap-2 text-gray-700">
+                               <Phone className="w-4 h-4 text-orange-500" />
+                               <span className="font-mono font-medium">{selectedPet.secondaryContactPhone || '-'}</span>
+                             </div>
+                           </div>
+                         </div>
+                       ) : (
+                         <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 flex flex-col items-center justify-center text-gray-400">
+                           <Users className="w-8 h-8 mb-2 opacity-50" />
+                           <span className="text-sm font-medium">2. Kişi Bilgisi Yok</span>
+                         </div>
+                       )}
+                     </div>
+                   </div>
+
                  </div>
                </div>
 

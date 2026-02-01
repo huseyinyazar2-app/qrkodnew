@@ -121,23 +121,42 @@ export const dbService = {
       const petData = item.pet_data || {};
       const lostStatus = item.lost_status || {};
       
+      // Helper to safely extract value from typical JSON structures or direct values
       const getVal = (field: any) => (typeof field === 'object' && field?.value ? field.value : field);
 
       return {
         id: item.id,
+        shortCode: user?.qr_code || '-',
+        
+        // Basic Info
         petName: getVal(petData.name) || 'Bilinmiyor',
-        petType: petData.type || 'Bilinmiyor',
+        petType: getVal(petData.type) || 'Bilinmiyor',
         photoUrl: getVal(petData.photoUrl) || '',
+        
+        // Detailed Info
+        breed: getVal(petData.breed),
+        gender: getVal(petData.gender),
+        age: getVal(petData.age),
+        color: getVal(petData.color),
+        microchipId: getVal(petData.microchipId),
         features: getVal(petData.features) || '',
+        
+        // Lost Status
         lostDate: lostStatus.lostDate || '',
         lostMessage: lostStatus.message || '',
+        reward: lostStatus.reward || '',
         location: lostStatus.lastSeenLocation || null,
+        
+        // Contact (Primary)
         ownerName: user?.full_name || 'Gizli',
         ownerPhone: user?.phone || 'Gizli',
-        ownerEmail: user?.email || 'Gizli',
+        ownerEmail: user?.email || '',
         city: user?.city || '',
         district: user?.district || '',
-        shortCode: user?.qr_code || '-'
+
+        // Contact (Secondary - if available in lost_status)
+        secondaryContactName: lostStatus.secondaryContactName || lostStatus.contactPerson2 || '',
+        secondaryContactPhone: lostStatus.secondaryContactPhone || lostStatus.contactPhone2 || ''
       };
     });
   },
