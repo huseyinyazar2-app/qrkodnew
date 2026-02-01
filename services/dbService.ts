@@ -1,4 +1,4 @@
-import { QRRecord } from '../types';
+import { QRRecord, LostPetRecord } from '../types';
 import { supabase } from './supabaseClient';
 
 // Helper to generate 6-char alphanumeric code
@@ -23,7 +23,7 @@ export const dbService = {
       .from('QR_admin')
       .select('*')
       .eq('username', username)
-      .eq('password', password) // In a real app, verify hash here
+      .eq('password', password)
       .single();
 
     if (error || !data) {
@@ -34,9 +34,18 @@ export const dbService = {
 
   // --- RECORDS ---
   getRecords: async (): Promise<QRRecord[]> => {
+    // We join with Find_Users table based on the relationship (qr_code = short_code)
+    // Note: Assuming Supabase Foreign Key is set up between Find_Users.qr_code and QR_Kod.short_code
     const { data, error } = await supabase
       .from('QR_Kod')
-      .select('*')
+      .select(`
+        *,
+        Find_Users (
+          full_name,
+          email,
+          phone
+        )
+      `)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -44,14 +53,72 @@ export const dbService = {
       return [];
     }
 
-    return data.map((item: any) => ({
-      id: item.id,
-      shortCode: item.short_code,
-      pin: item.pin,
-      fullUrl: item.full_url,
-      status: item.status === 'boş' ? 'active' : 'passive',
-      createdAt: new Date(item.created_at).getTime(),
-    }));
+    return data.map((item: any) => {
+      // Find_Users might be an array or object depending on relationship (one-to-one assumed)
+      const user = Array.isArray(item.Find_Users) ? item.Find_Users[0] : item.Find_Users;
+
+      return {
+        id: item.id,
+        shortCode: item.short_code,
+        pin: item.pin,
+        fullUrl: item.full_url,
+        status: item.status === 'boş' ? 'active' : 'passive',
+        createdAt: new Date(item.created_at).getTime(),
+        ownerName: user?.full_name || '-',
+        ownerEmail: user?.email || '-',
+        ownerPhone: user?.phone || '-'
+      };
+    });
+  },
+
+  // --- LOST PETS ---
+  getLostPets: async (): Promise<LostPetRecord[]> => {
+    // 1. Fetch pets where lost_status -> isActive is true
+    // We also need owner details from Find_Users
+    
+    // Note: Supabase JSON filtering syntax
+    const { data, error } = await supabase
+      .from('Find_Pets')
+      .select(`
+        id,
+        pet_data,
+        lost_status,
+        Find_Users (
+          full_name,
+          phone,
+          email,
+          qr_code
+        )
+      `)
+      // Check if the JSONB column 'lost_status' contains the key-value pair "isActive": true
+      .contains('lost_status', { isActive: true });
+
+    if (error) {
+      console.error('Error fetching lost pets:', error);
+      return [];
+    }
+
+    return data.map((item: any) => {
+      const user = Array.isArray(item.Find_Users) ? item.Find_Users[0] : item.Find_Users;
+      const petData = item.pet_data || {};
+      const lostStatus = item.lost_status || {};
+      
+      // Handle potentially public/private values structure from JSON
+      const getVal = (field: any) => (typeof field === 'object' && field?.value ? field.value : field);
+
+      return {
+        id: item.id,
+        petName: getVal(petData.name) || 'Bilinmiyor',
+        petType: petData.type || 'Bilinmiyor',
+        photoUrl: getVal(petData.photoUrl) || '',
+        lostDate: lostStatus.lostDate || '',
+        lostMessage: lostStatus.message || '',
+        ownerName: user?.full_name || 'Gizli',
+        ownerPhone: user?.phone || 'Gizli',
+        ownerEmail: user?.email || 'Gizli',
+        shortCode: user?.qr_code || '-'
+      };
+    });
   },
 
   generateBatch: (baseUrl: string, count: number): QRRecord[] => {

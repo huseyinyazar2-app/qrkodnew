@@ -9,7 +9,10 @@ import {
   ArrowUpDown, 
   ArrowUp, 
   ArrowDown, 
-  Calendar
+  Calendar,
+  User,
+  Phone,
+  Mail
 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { QRRecord } from '../types';
@@ -92,7 +95,8 @@ export const RecordsPage: React.FC<RecordsPageProps> = ({ records, onDelete, onR
       const lowerTerm = searchTerm.toLowerCase();
       result = result.filter(r => 
         r.shortCode.toLowerCase().includes(lowerTerm) ||
-        r.fullUrl.toLowerCase().includes(lowerTerm)
+        r.fullUrl.toLowerCase().includes(lowerTerm) ||
+        (r.ownerName && r.ownerName.toLowerCase().includes(lowerTerm))
       );
     }
 
@@ -131,7 +135,7 @@ export const RecordsPage: React.FC<RecordsPageProps> = ({ records, onDelete, onR
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Kod veya URL ara..."
+              placeholder="Kod, URL veya İsim ara..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-200 focus:border-brand-400 outline-none"
@@ -163,7 +167,7 @@ export const RecordsPage: React.FC<RecordsPageProps> = ({ records, onDelete, onR
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                <th className="px-6 py-4 w-20">QR</th>
+                <th className="px-6 py-4 w-16">QR</th>
                 
                 <th 
                   className="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors group select-none"
@@ -177,19 +181,6 @@ export const RecordsPage: React.FC<RecordsPageProps> = ({ records, onDelete, onR
 
                 <th 
                   className="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors group select-none"
-                  onClick={() => handleSort('createdAt')}
-                >
-                   <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 opacity-50" />
-                    Tarih
-                    {getSortIcon('createdAt')}
-                  </div>
-                </th>
-
-                <th className="px-6 py-4">Şifre (PIN)</th>
-                
-                <th 
-                  className="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors group select-none"
                   onClick={() => handleSort('status')}
                 >
                   <div className="flex items-center gap-2">
@@ -197,13 +188,28 @@ export const RecordsPage: React.FC<RecordsPageProps> = ({ records, onDelete, onR
                     {getSortIcon('status')}
                   </div>
                 </th>
+
+                {/* New Columns */}
+                <th className="px-6 py-4">Sahiplik Bilgileri</th>
+
+                <th className="px-6 py-4">Şifre (PIN)</th>
                 
+                <th 
+                  className="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors group select-none"
+                  onClick={() => handleSort('createdAt')}
+                >
+                   <div className="flex items-center gap-2">
+                    Tarih
+                    {getSortIcon('createdAt')}
+                  </div>
+                </th>
+
                 <th className="px-6 py-4 text-right">İşlemler</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {savedRecords.map((record) => (
-                <tr key={record.id} className="hover:bg-slate-50 transition-colors">
+                <tr key={record.id} className="hover:bg-slate-50 transition-colors text-sm">
                   <td className="px-6 py-3">
                     <div className="w-10 h-10 bg-white border rounded flex items-center justify-center">
                        <QRCodeCanvas value={record.fullUrl} size={32} />
@@ -214,8 +220,36 @@ export const RecordsPage: React.FC<RecordsPageProps> = ({ records, onDelete, onR
                     {record.shortCode}
                   </td>
 
-                  <td className="px-6 py-3 text-sm text-gray-500 whitespace-nowrap">
-                    {new Date(record.createdAt).toLocaleString('tr-TR')}
+                  <td className="px-6 py-3">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                      record.status === 'active' 
+                        ? 'bg-green-50 text-green-700 border-green-200' 
+                        : 'bg-red-50 text-red-700 border-red-200'
+                    }`}>
+                      {record.status === 'active' ? 'BOŞ' : 'DOLU'}
+                    </span>
+                  </td>
+
+                  {/* Owner Info Column */}
+                  <td className="px-6 py-3">
+                    {record.status === 'passive' ? (
+                      <div className="flex flex-col gap-1">
+                         <div className="flex items-center gap-2 text-gray-900 font-medium">
+                           <User className="w-3 h-3 text-gray-400" />
+                           {record.ownerName}
+                         </div>
+                         <div className="flex items-center gap-2 text-gray-500 text-xs">
+                           <Mail className="w-3 h-3" />
+                           {record.ownerEmail}
+                         </div>
+                         <div className="flex items-center gap-2 text-gray-500 text-xs">
+                           <Phone className="w-3 h-3" />
+                           {record.ownerPhone}
+                         </div>
+                      </div>
+                    ) : (
+                      <span className="text-gray-400 italic text-xs">-</span>
+                    )}
                   </td>
 
                   <td className="px-6 py-3">
@@ -257,15 +291,9 @@ export const RecordsPage: React.FC<RecordsPageProps> = ({ records, onDelete, onR
                       </div>
                     )}
                   </td>
-
-                  <td className="px-6 py-3">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                      record.status === 'active' 
-                        ? 'bg-green-50 text-green-700 border-green-200' 
-                        : 'bg-red-50 text-red-700 border-red-200'
-                    }`}>
-                      {record.status === 'active' ? 'BOŞ' : 'DOLU'}
-                    </span>
+                  
+                  <td className="px-6 py-3 text-gray-500 whitespace-nowrap text-xs">
+                    {new Date(record.createdAt).toLocaleString('tr-TR')}
                   </td>
 
                   <td className="px-6 py-3 text-right">
@@ -282,7 +310,7 @@ export const RecordsPage: React.FC<RecordsPageProps> = ({ records, onDelete, onR
               
               {savedRecords.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500 bg-gray-50/50">
+                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500 bg-gray-50/50">
                     <div className="flex flex-col items-center">
                        <Filter className="w-10 h-10 text-gray-300 mb-2" />
                        <p>Kriterlere uygun kayıt bulunamadı.</p>

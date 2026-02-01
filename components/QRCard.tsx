@@ -15,44 +15,69 @@ export const QRCard: React.FC<QRCardProps> = ({ record, onDelete }) => {
     const originalCanvas = qrRef.current?.querySelector('canvas');
     if (!originalCanvas) return;
 
-    // Create a new canvas to combine QR + Text
+    // Ask user for dimension
+    const sizeCmStr = prompt("Çıktı için genişlik (cm) giriniz:", "3");
+    if (!sizeCmStr) return;
+    
+    const sizeCm = parseFloat(sizeCmStr.replace(',', '.'));
+    if (isNaN(sizeCm) || sizeCm <= 0) {
+      alert("Geçersiz boyut.");
+      return;
+    }
+
+    // High resolution (300 DPI)
+    // 1 cm = 118.11 pixels at 300 DPI
+    const pixels = Math.round(sizeCm * 118.11);
+    
+    // Create high-res canvas
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Increase height to accommodate "Find Me" + Code ID
-    const extraHeight = 70; 
-    
-    // Set dimensions
-    canvas.width = originalCanvas.width;
-    canvas.height = originalCanvas.height + extraHeight;
+    const padding = pixels * 0.05; // 5% padding
+    canvas.width = pixels;
+    // Extra height for text: roughly 30% of height
+    const extraHeight = pixels * 0.35; 
+    canvas.height = pixels + extraHeight;
 
-    // Fill white background
+    // Background
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw original QR
-    ctx.drawImage(originalCanvas, 0, 0);
+    // Draw QR Code
+    // We cannot just draw the original canvas because it might be low res.
+    // However, for this client-side impl, we scale the image. 
+    // Ideally we would redraw QR at high res, but scaling 'H' level QR usually works fine for this scale.
+    // Better quality: disable image smoothing
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(originalCanvas, padding, padding, pixels - (padding*2), pixels - (padding*2));
 
-    // Draw "Find Me" label
-    ctx.font = 'bold 16px sans-serif'; 
-    ctx.fillStyle = '#555555';
+    // Text Settings
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText("Find Me", canvas.width / 2, originalCanvas.height + 25);
-
-    // Draw Code ID below "Find Me"
-    ctx.font = 'bold 24px monospace'; 
     ctx.fillStyle = '#000000';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(record.shortCode, canvas.width / 2, originalCanvas.height + 55);
+
+    // 1. "Find Me" Label
+    const fontSize1 = Math.round(pixels * 0.1); 
+    ctx.font = `bold ${fontSize1}px sans-serif`;
+    ctx.fillText("Find Me", canvas.width / 2, pixels + (extraHeight * 0.25));
+
+    // 2. Short Code
+    const fontSize2 = Math.round(pixels * 0.15);
+    ctx.font = `bold ${fontSize2}px monospace`;
+    ctx.fillText(record.shortCode, canvas.width / 2, pixels + (extraHeight * 0.55));
+
+    // 3. PIN Code
+    const fontSize3 = Math.round(pixels * 0.08);
+    ctx.fillStyle = '#555555'; // Dark gray for PIN
+    ctx.font = `bold ${fontSize3}px monospace`;
+    ctx.fillText(`PIN: ${record.pin}`, canvas.width / 2, pixels + (extraHeight * 0.85));
 
     // Download
     const pngUrl = canvas.toDataURL('image/png');
     const downloadLink = document.createElement('a');
     downloadLink.href = pngUrl;
-    downloadLink.download = `qr-${record.shortCode}.png`;
+    downloadLink.download = `qr-${record.shortCode}-${sizeCm}cm.png`;
     document.body.appendChild(downloadLink);
     downloadLink.click();
     document.body.removeChild(downloadLink);
@@ -69,7 +94,7 @@ export const QRCard: React.FC<QRCardProps> = ({ record, onDelete }) => {
         {/* Status Badge */}
         {isUnsaved ? (
            <div className="absolute top-3 left-3 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider bg-amber-100 text-amber-700 flex items-center gap-1">
-             <AlertTriangle className="w-3 h-3" /> KAYDEDİLMEDİ
+             <AlertTriangle className="w-3 h-3" /> TASLAK
            </div>
         ) : (
            <div className={`absolute top-3 left-3 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider ${
@@ -103,7 +128,7 @@ export const QRCard: React.FC<QRCardProps> = ({ record, onDelete }) => {
            <button 
              onClick={downloadQRWithText}
              className="bg-white text-gray-700 p-2 rounded-full shadow-md hover:text-brand-600 transition"
-             title="Resmi İndir"
+             title="Resmi İndir (CM Ayarlı)"
            >
              <Download className="w-4 h-4" />
            </button>

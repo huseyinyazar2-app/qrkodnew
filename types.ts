@@ -3,12 +3,30 @@ export interface QRRecord {
   shortCode: string;   // The 6-char random alphanumeric code
   pin: string;         // The 6-digit password
   fullUrl: string;     // Base URL + shortCode
-  status: 'active' | 'passive'; // Status of the code
+  status: 'active' | 'passive'; // Status of the code (active=boş, passive=dolu)
   createdAt: number;
   unsaved?: boolean;   // UI flag: true if generated but not yet saved to DB
+  
+  // Owner Info (Populated if status is passive/dolu)
+  ownerName?: string;
+  ownerEmail?: string;
+  ownerPhone?: string;
 }
 
-export type ViewState = 'dashboard' | 'settings' | 'search' | 'records';
+export interface LostPetRecord {
+  id: string;
+  petName: string;
+  petType: string;
+  photoUrl: string;
+  lostDate: string;
+  lostMessage: string;
+  ownerName: string;
+  ownerPhone: string;
+  ownerEmail: string;
+  shortCode: string;
+}
+
+export type ViewState = 'dashboard' | 'settings' | 'search' | 'records' | 'lost-pets';
 
 export interface User {
   username: string;
