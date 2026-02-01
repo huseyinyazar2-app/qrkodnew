@@ -22,7 +22,7 @@ import { Login } from './components/Login';
 import { QRCard } from './components/QRCard';
 import { QRTable } from './components/QRTable';
 import { RecordsPage } from './components/RecordsPage';
-import { LostPetsPage } from './components/LostPetsPage'; // New Import
+import { LostPetsPage } from './components/LostPetsPage';
 import { dbService } from './services/dbService';
 import { QRRecord, ViewState } from './types';
 
@@ -30,7 +30,7 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [view, setView] = useState<ViewState>('dashboard');
   
-  // records contains BOTH saved and unsaved (draft) records
+  // records contains saved DB records AND unsaved drafts AND newly saved batch
   const [records, setRecords] = useState<QRRecord[]>([]);
   
   const [baseUrl, setBaseUrl] = useState('');
@@ -57,11 +57,13 @@ function App() {
   }, [isAuthenticated, view]); // Reload data when view changes
 
   const loadData = async () => {
-    // Load Records
+    // Only fetch fresh data from DB if we are NOT in the dashboard view with pending/fresh items.
+    // Or if we specifically want to refresh.
+    // For simplicity, we fetch all.
     const data = await dbService.getRecords();
     setRecords(data);
     
-    // Load Settings from DB (Async now)
+    // Load Settings
     const url = await dbService.getBaseUrl();
     setBaseUrl(url);
     setTempBaseUrl(url);
@@ -121,14 +123,25 @@ function App() {
     
     try {
       const result = await dbService.saveBatch(unsavedRecords);
-      await loadData();
+      
+      // CRITICAL UPDATE: Do NOT reload data from DB immediately.
+      // Instead, mark the local records as saved so they stay on screen
+      // and can be downloaded.
+      
+      setRecords(prev => prev.map(r => {
+        if (r.unsaved) {
+           return { ...r, unsaved: false, isJustSaved: true };
+        }
+        return r;
+      }));
+
       setGenerateCount(1);
 
       if (result.skipped > 0) {
         alert(
           `İşlem Tamamlandı:\n` +
           `✅ ${result.saved} adet başarıyla kaydedildi.\n` +
-          `⚠️ ${result.skipped} adet çakışan kod tespit edildi ve iptal edildi.`
+          `⚠️ ${result.skipped} adet çakışan kod tespit edildi.`
         );
       }
     } catch (error) {
@@ -140,10 +153,12 @@ function App() {
 
   // BATCH DOWNLOAD PDF
   const handleBatchDownload = async () => {
-    const drafts = records.filter(r => r.unsaved);
-    if (drafts.length === 0) return;
+    // We download items that are either Unsaved (Drafts) OR Just Saved (Fresh Batch)
+    const recordsToDownload = records.filter(r => r.unsaved || r.isJustSaved);
+    
+    if (recordsToDownload.length === 0) return;
 
-    if (!window.confirm(`${drafts.length} adet QR kod için toplu PDF oluşturulacak. Boyut: ${batchSizeCm}cm x ${batchSizeCm}cm. Devam edilsin mi?`)) {
+    if (!window.confirm(`${recordsToDownload.length} adet QR kod için toplu PDF oluşturulacak. Boyut: ${batchSizeCm}cm x ${batchSizeCm}cm. Devam edilsin mi?`)) {
       return;
     }
 
@@ -163,59 +178,24 @@ function App() {
     // Helper to generate canvas data URL
     const generateCanvasData = (record: QRRecord): Promise<string> => {
       return new Promise((resolve) => {
-        const canvas = document.createElement('canvas');
-        // High resolution pixels
-        const sizePx = 500; 
-        const extraHeight = 150;
-        canvas.width = sizePx;
-        canvas.height = sizePx + extraHeight;
-        
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return resolve('');
-
-        // White bg
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(0,0, canvas.width, canvas.height);
-
-        // Render QR
-        // Since we don't have the canvas rendered in DOM for all items, we render a temporary one using qrcode.react logic
-        // But for simplicity in this batch function, we can rely on a simpler approach:
-        // Use a library or simpler drawing. Since we have QRCodeCanvas imported, let's try to render it to a hidden div?
-        // No, that's async and React specific.
-        // We will use a lightweight logic: we will render QR to the PDF.
-        // Actually, jsPDF cannot generate QR natively easily without plugins.
-        // We will use a dirty trick: Render each QR to a hidden temporary canvas using a helper.
-        // BUT, since we already have qrcode.react, we can just use the URLs.
-        // Let's use `QRCodeCanvas` inside a hidden container in DOM? No too complex.
-        
-        // BETTER APPROACH: Use `qrcode` library raw generation if possible, but here we can just create a canvas
-        // and draw the squares manually? No.
-        // We will fallback to using the existing records.
-        // Since `QRCodeCanvas` is a React component, we can't call it as a function.
-        
-        // Workaround: We will loop and wait for basic QR generation? 
-        // Let's assume for now we just want text info, but user wants QR.
-        // In a real production app, I would use `qrcode` npm package (not react one) to generate dataURL.
-        // Since I only have `qrcode.react` via importmap, I'll assume we can't easily generate without rendering.
-        // However, `qrcode.react` uses `qrcode` under the hood. 
-        // Let's try to fetch `qrcode` from skypack/esm.sh dynamically?
-        // For this specific prompt constraint, I'll assume I can use a simple QR generator from a CDN or just warn user.
-        
-        // ACTUALLY: I will modify index.html to include `qrcode` lib if I could, but I can't modify it outside the xml block easily unless I add it.
-        // Wait, I can modify index.html. I'll stick to a placeholder "QR" box if I can't generate, 
-        // BUT wait, `qrcode.react` exports usually aren't exposed globally.
-        
-        // ALTERNATIVE: Use the text only? No, user wants QR.
-        // OK, I will add `qrcode` to importmap in index.html and use it here.
-        // Check my index.html change above. I added `jspdf`. I should add `qrcode`.
-        // I will add `qrcode` to imports in index.html update.
-        
         import('https://esm.sh/qrcode@1.5.3').then((QRCode) => {
              QRCode.toDataURL(record.fullUrl, { errorCorrectionLevel: 'H', margin: 1, width: 500 }, (err: any, url: string) => {
                 if (err) resolve('');
                 
                 const img = new Image();
                 img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const sizePx = 500; 
+                    const extraHeight = 150;
+                    canvas.width = sizePx;
+                    canvas.height = sizePx + extraHeight;
+                    const ctx = canvas.getContext('2d');
+                    if(!ctx) return resolve('');
+
+                    // White bg
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(0,0, canvas.width, canvas.height);
+                    
                     ctx.drawImage(img, 0, 0, sizePx, sizePx);
                     
                     // Text
@@ -238,8 +218,8 @@ function App() {
     }
 
     // Processing loop
-    for (let i = 0; i < drafts.length; i++) {
-      const dataUrl = await generateCanvasData(drafts[i]);
+    for (let i = 0; i < recordsToDownload.length; i++) {
+      const dataUrl = await generateCanvasData(recordsToDownload[i]);
       if (dataUrl) {
         // Check page bounds
         if (x + itemSize > pageWidth - margin) {
@@ -284,7 +264,7 @@ function App() {
     }
   };
 
-  // Logic for the Search Page - CASE INSENSITIVE FIX
+  // Logic for the Search Page
   const handleSearchSingleCode = (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchCodeInput.trim()) return;
@@ -295,14 +275,17 @@ function App() {
     setHasSearched(true);
   };
 
+  // DASHBOARD FILTER: Show Unsaved OR Recently Saved items
   const dashboardRecords = records.filter(r => 
-    r.unsaved && (
+    (r.unsaved || r.isJustSaved) && (
       r.shortCode.toLowerCase().includes(searchTerm.toLowerCase()) || 
       r.fullUrl.toLowerCase().includes(searchTerm.toLowerCase())
     )
   );
 
   const unsavedCount = records.filter(r => r.unsaved).length;
+  const justSavedCount = records.filter(r => r.isJustSaved).length;
+  const downloadableCount = unsavedCount + justSavedCount;
 
   if (!isAuthenticated) {
     return <Login onLogin={handleLogin} />;
@@ -434,8 +417,8 @@ function App() {
                    </button>
                  </div>
 
-                 {/* Batch PDF Button - Only shows if there are drafts */}
-                 {unsavedCount > 0 && (
+                 {/* Batch PDF Button - Only shows if there are downloadable items (Drafts OR Just Saved) */}
+                 {downloadableCount > 0 && (
                    <div className="flex items-center gap-1 bg-gray-100 p-1.5 rounded-lg border border-gray-200">
                      <span className="text-xs font-semibold text-gray-500 pl-1">CM:</span>
                      <input 
@@ -457,7 +440,7 @@ function App() {
                    </div>
                  )}
 
-                 {/* Save Button */}
+                 {/* Save Button - Only for Unsaved */}
                  {unsavedCount > 0 && (
                    <button
                     onClick={handleSaveChanges}
@@ -552,7 +535,6 @@ function App() {
                       value={searchCodeInput}
                       onChange={(e) => setSearchCodeInput(e.target.value)}
                       placeholder="Örn: aB3d9X"
-                      // Removed uppercase enforcement logic to allow mixed case
                       className="flex-1 px-4 py-3 text-center text-lg font-mono border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
                       maxLength={6}
                     />
@@ -600,7 +582,7 @@ function App() {
                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                      <input 
                         type="text" 
-                        placeholder="Taslaklarda filtrele..." 
+                        placeholder="Yeni üretimde filtrele..." 
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-200 focus:border-brand-400 outline-none"
@@ -627,6 +609,22 @@ function App() {
                 </div>
               )}
 
+              {/* Banner for Just Saved */}
+              {justSavedCount > 0 && (
+                <div className="bg-green-50 border border-green-200 text-green-800 p-4 rounded-lg flex items-center justify-between">
+                   <div className="flex items-center gap-2">
+                     <CheckCircle className="w-5 h-5" />
+                     <span className="font-medium">{justSavedCount} adet kod başarıyla kaydedildi.</span>
+                   </div>
+                   <button 
+                     onClick={() => setRecords(prev => prev.filter(r => !r.isJustSaved))}
+                     className="text-sm underline hover:text-green-900"
+                   >
+                     Listeyi Temizle
+                   </button>
+                </div>
+              )}
+
               {/* Content Area */}
               {dashboardRecords.length === 0 ? (
                 <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
@@ -646,11 +644,12 @@ function App() {
                   {displayMode === 'grid' ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                       {dashboardRecords.map((record) => (
-                        <QRCard 
-                          key={record.id} 
-                          record={record} 
-                          onDelete={handleDelete}
-                        />
+                        <div key={record.id} className={record.isJustSaved ? 'ring-2 ring-green-400 rounded-xl' : ''}>
+                          <QRCard 
+                            record={record} 
+                            onDelete={handleDelete}
+                          />
+                        </div>
                       ))}
                     </div>
                   ) : (
@@ -662,7 +661,7 @@ function App() {
                   
                   {dashboardRecords.length === 0 && searchTerm && (
                     <div className="text-center text-gray-500 py-10 w-full bg-white rounded-lg">
-                      "{searchTerm}" için taslak bulunamadı.
+                      "{searchTerm}" için kayıt bulunamadı.
                     </div>
                   )}
                 </>

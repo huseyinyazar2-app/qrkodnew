@@ -34,8 +34,8 @@ export const dbService = {
 
   // --- RECORDS ---
   getRecords: async (): Promise<QRRecord[]> => {
-    // We join with Find_Users table based on the relationship (qr_code = short_code)
-    // Note: Assuming Supabase Foreign Key is set up between Find_Users.qr_code and QR_Kod.short_code
+    // Modified query to be safer. using explicit left join logic via select syntax if possible.
+    // Ensure we handle cases where Find_Users is missing.
     const { data, error } = await supabase
       .from('QR_Kod')
       .select(`
@@ -53,9 +53,14 @@ export const dbService = {
       return [];
     }
 
+    if (!data) return [];
+
     return data.map((item: any) => {
-      // Find_Users might be an array or object depending on relationship (one-to-one assumed)
-      const user = Array.isArray(item.Find_Users) ? item.Find_Users[0] : item.Find_Users;
+      // Find_Users might be null, an array, or an object. Safe parsing.
+      let user = null;
+      if (item.Find_Users) {
+        user = Array.isArray(item.Find_Users) ? item.Find_Users[0] : item.Find_Users;
+      }
 
       return {
         id: item.id,
@@ -73,10 +78,7 @@ export const dbService = {
 
   // --- LOST PETS ---
   getLostPets: async (): Promise<LostPetRecord[]> => {
-    // 1. Fetch pets where lost_status -> isActive is true
-    // We also need owner details from Find_Users
-    
-    // Note: Supabase JSON filtering syntax
+    // Fetch pets where lost_status -> isActive is true
     const { data, error } = await supabase
       .from('Find_Pets')
       .select(`
@@ -87,10 +89,11 @@ export const dbService = {
           full_name,
           phone,
           email,
-          qr_code
+          qr_code,
+          city,
+          district
         )
       `)
-      // Check if the JSONB column 'lost_status' contains the key-value pair "isActive": true
       .contains('lost_status', { isActive: true });
 
     if (error) {
@@ -103,7 +106,6 @@ export const dbService = {
       const petData = item.pet_data || {};
       const lostStatus = item.lost_status || {};
       
-      // Handle potentially public/private values structure from JSON
       const getVal = (field: any) => (typeof field === 'object' && field?.value ? field.value : field);
 
       return {
@@ -111,11 +113,15 @@ export const dbService = {
         petName: getVal(petData.name) || 'Bilinmiyor',
         petType: petData.type || 'Bilinmiyor',
         photoUrl: getVal(petData.photoUrl) || '',
+        features: getVal(petData.features) || '',
         lostDate: lostStatus.lostDate || '',
         lostMessage: lostStatus.message || '',
+        location: lostStatus.lastSeenLocation || null,
         ownerName: user?.full_name || 'Gizli',
         ownerPhone: user?.phone || 'Gizli',
         ownerEmail: user?.email || 'Gizli',
+        city: user?.city || '',
+        district: user?.district || '',
         shortCode: user?.qr_code || '-'
       };
     });

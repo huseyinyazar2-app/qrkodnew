@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
-import { Download, Trash2, Key, Link as LinkIcon, AlertTriangle } from 'lucide-react';
+import { Download, Trash2, Key, Link as LinkIcon, AlertTriangle, Check } from 'lucide-react';
 import { QRRecord } from '../types';
 
 interface QRCardProps {
@@ -84,19 +84,32 @@ export const QRCard: React.FC<QRCardProps> = ({ record, onDelete }) => {
   };
 
   const isUnsaved = record.unsaved;
+  const isJustSaved = record.isJustSaved;
 
   return (
     <div className={`bg-white rounded-xl shadow-sm border overflow-hidden hover:shadow-md transition duration-300 flex flex-col ${
-      isUnsaved ? 'border-amber-400 ring-2 ring-amber-100' : 'border-gray-200'
+      isUnsaved 
+        ? 'border-amber-400 ring-2 ring-amber-100' 
+        : isJustSaved 
+          ? 'border-green-400 ring-2 ring-green-100'
+          : 'border-gray-200'
     }`}>
       <div className="p-6 flex flex-col items-center bg-gray-50 border-b border-gray-100 relative group">
         
         {/* Status Badge */}
-        {isUnsaved ? (
+        {isUnsaved && (
            <div className="absolute top-3 left-3 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider bg-amber-100 text-amber-700 flex items-center gap-1">
              <AlertTriangle className="w-3 h-3" /> TASLAK
            </div>
-        ) : (
+        )}
+        
+        {isJustSaved && (
+           <div className="absolute top-3 left-3 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider bg-green-100 text-green-700 flex items-center gap-1">
+             <Check className="w-3 h-3" /> KAYDEDİLDİ
+           </div>
+        )}
+
+        {!isUnsaved && !isJustSaved && (
            <div className={`absolute top-3 left-3 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider ${
              record.status === 'active' 
                ? 'bg-green-100 text-green-700' 

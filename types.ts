@@ -6,6 +6,7 @@ export interface QRRecord {
   status: 'active' | 'passive'; // Status of the code (active=boş, passive=dolu)
   createdAt: number;
   unsaved?: boolean;   // UI flag: true if generated but not yet saved to DB
+  isJustSaved?: boolean; // UI flag: true if saved in the current session (allows batch PDF download)
   
   // Owner Info (Populated if status is passive/dolu)
   ownerName?: string;
@@ -24,6 +25,11 @@ export interface LostPetRecord {
   ownerPhone: string;
   ownerEmail: string;
   shortCode: string;
+  // Extra details for modal
+  features?: string;
+  city?: string;
+  district?: string;
+  location?: { lat: number; lng: number };
 }
 
 export type ViewState = 'dashboard' | 'settings' | 'search' | 'records' | 'lost-pets';
